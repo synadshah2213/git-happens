@@ -1,5 +1,5 @@
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
-const GROQ_API_KEY = "REDACTED";
+const GROQ_API_KEY = "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";
 
 const CLASSIFIER_PROMPT = `You are SENTINEL AI, a cybersecurity system protecting LLMs from attacks.
 
