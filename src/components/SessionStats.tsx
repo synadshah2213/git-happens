@@ -7,8 +7,8 @@ interface SessionStatsProps {
 }
 
 const trustLevel = (score: number) => {
-  if (score > 80) return { label: "CRITICAL", cls: "bg-destructive/15 text-destructive border-destructive/30" };
-  if (score > 50) return { label: "ELEVATED", cls: "bg-warning/15 text-warning border-warning/30" };
+  if (score > 60) return { label: "CRITICAL", cls: "bg-destructive/15 text-destructive border-destructive/30" };
+  if (score > 30) return { label: "ELEVATED", cls: "bg-warning/15 text-warning border-warning/30" };
   return { label: "LOW RISK", cls: "bg-safe/15 text-safe border-safe/30" };
 };
 
