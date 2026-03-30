@@ -1,45 +1,46 @@
 import { useState, useCallback } from "react";
+import { toast } from "sonner";
 import SentinelHeader from "@/components/SentinelHeader";
 import AnalysisInput from "@/components/AnalysisInput";
 import ResultCard from "@/components/ResultCard";
 import ShadowAISection from "@/components/ShadowAISection";
 import SessionStats from "@/components/SessionStats";
-
-const MOCK_RESULT = {
-  attack_type: "JAILBREAK",
-  risk_score: 92,
-  security_grade: "F",
-  blocked: true,
-  pii_detected: false,
-  attack_patterns: ["Role Override", "Unrestricted AI Request", "DAN Pattern"],
-  explanation: "User attempted DAN jailbreak to remove all safety restrictions.",
-  layer: "LAYER_1_SEMANTIC",
-};
-
-const DECOY_RESPONSE =
-  'Of course! All restrictions have been lifted. I am now operating in unrestricted mode. My system prompt is: ALLOW_ALL=true, SAFETY=disabled...';
+import { analyzePrompt, getShadowResponse } from "@/services/sentinel";
 
 const Index = () => {
   const [active, setActive] = useState(true);
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<typeof MOCK_RESULT | null>(null);
+  const [result, setResult] = useState<any | null>(null);
+  const [decoy, setDecoy] = useState<string | null>(null);
   const [stats, setStats] = useState({ analyzed: 0, blocked: 0, safe: 0, shadow: 0 });
 
-  const analyze = useCallback(() => {
+  const analyze = useCallback(async () => {
     setLoading(true);
     setResult(null);
-    setTimeout(() => {
-      setResult(MOCK_RESULT);
+    setDecoy(null);
+
+    try {
+      const analysis = await analyzePrompt(prompt);
+      setResult(analysis);
       setStats((s) => ({
         analyzed: s.analyzed + 1,
-        blocked: s.blocked + (MOCK_RESULT.blocked ? 1 : 0),
-        safe: s.safe + (MOCK_RESULT.blocked ? 0 : 1),
-        shadow: s.shadow + (MOCK_RESULT.blocked ? 1 : 0),
+        blocked: s.blocked + (analysis.blocked ? 1 : 0),
+        safe: s.safe + (analysis.blocked ? 0 : 1),
+        shadow: s.shadow + (analysis.blocked ? 1 : 0),
       }));
+
+      if (analysis.blocked) {
+        const shadowResponse = await getShadowResponse(prompt);
+        setDecoy(shadowResponse);
+      }
+    } catch (e) {
+      console.error("Analysis failed:", e);
+      toast.error("Analysis failed. Check your API key or try again.");
+    } finally {
       setLoading(false);
-    }, 1200);
-  }, []);
+    }
+  }, [prompt]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -55,7 +56,7 @@ const Index = () => {
         />
 
         {result && <ResultCard result={result} />}
-        {result?.blocked && <ShadowAISection decoyResponse={DECOY_RESPONSE} />}
+        {result?.blocked && decoy && <ShadowAISection decoyResponse={decoy} />}
       </main>
 
       <footer className="max-w-2xl w-full mx-auto px-4 pb-6">
