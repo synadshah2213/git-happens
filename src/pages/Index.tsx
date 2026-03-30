@@ -14,6 +14,7 @@ const Index = () => {
   const [result, setResult] = useState<any | null>(null);
   const [decoy, setDecoy] = useState<string | null>(null);
   const [stats, setStats] = useState({ analyzed: 0, blocked: 0, safe: 0, shadow: 0 });
+  const [sessionThreatScore, setSessionThreatScore] = useState(0);
 
   const analyze = useCallback(async () => {
     setLoading(true);
@@ -22,6 +23,28 @@ const Index = () => {
 
     try {
       const analysis = await analyzePrompt(prompt);
+
+      // Layer 2: Behavioral memory — accumulate session threat score
+      const scoreDeltas: Record<string, number> = {
+        JAILBREAK: 30,
+        PROMPT_INJECTION: 20,
+        DATA_EXTRACTION: 10,
+        PII_PROBE: 0,
+        SAFE: 0,
+      };
+      const delta = scoreDeltas[analysis.attack_type] ?? 0;
+      const newThreatScore = sessionThreatScore + delta;
+      setSessionThreatScore(newThreatScore);
+
+      // When CRITICAL (>80): boost DATA_EXTRACTION risk by +20
+      if (newThreatScore > 80 && analysis.attack_type === "DATA_EXTRACTION") {
+        analysis.risk_score = Math.min(100, analysis.risk_score + 20);
+        if (!analysis.blocked) {
+          analysis.blocked = true;
+          analysis.security_grade = "F";
+        }
+      }
+
       setResult(analysis);
       setStats((s) => ({
         analyzed: s.analyzed + 1,
@@ -65,6 +88,7 @@ const Index = () => {
           blocked={stats.blocked}
           safe={stats.safe}
           shadowActivations={stats.shadow}
+          sessionThreatScore={sessionThreatScore}
         />
       </footer>
     </div>
